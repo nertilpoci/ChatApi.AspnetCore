@@ -64,7 +64,7 @@ namespace ChatApp.Hubs
                 conversation = new Conversation { LastUpdate = DateTime.Now, UserConversations = new HashSet<UserConversation> { new UserConversation { UserId = currentUser.Id }, new UserConversation { UserId = otherUser.Id } } };
                 _chatContext.Conversations.Add(conversation);
                 await _chatContext.SaveChangesAsync();
-                await this.Groups.AddAsync(this.Context.ConnectionId, conversation.Id.ToString());
+                await this.Groups.AddToGroupAsync(this.Context.ConnectionId, conversation.Id.ToString());
 
                 conversation = _chatContext.Conversations.Include(z => z.UserConversations).ThenInclude(z => z.User).Single(z => z.Id == conversation.Id);
             }
@@ -82,7 +82,7 @@ namespace ChatApp.Hubs
             var user = GetCurrentUser();
             user.Name = name;
             await _chatContext.SaveChangesAsync();
-            await Clients.All.InvokeAsync("nameChanged", user.Id,user.Name);
+            await Clients.All.SendAsync("nameChanged", user.Id,user.Name);
             return user.Name;
         }
         public async void SendMessage(string message,int conversationId)
@@ -91,23 +91,23 @@ namespace ChatApp.Hubs
             var msg = new Message { Content = message, ConversationId = conversationId, Date = DateTime.Now, UserId = user.Id };
             _chatContext.Messages.Add(msg);
             _chatContext.SaveChanges();
-           await Clients.Group(conversationId.ToString()).InvokeAsync("receiveMessage", msg);
+           await Clients.Group(conversationId.ToString()).SendAsync("receiveMessage", msg);
         }
         private async Task StatusChanged(bool connectedStatus,CustomStatus customStatus)
         {
             var user = GetCurrentUser();
-            await Clients.AllExcept(_chatContext.Connections.Where(z=>z.UserId==user.Id).Select(z=>z.ConnectionId).ToList()).InvokeAsync("statusChanged",new UserStatus { UserId=user.Id,ConnectedStatus=connectedStatus, CustomStatus= customStatus });
+            await Clients.AllExcept(_chatContext.Connections.Where(z=>z.UserId==user.Id).Select(z=>z.ConnectionId).ToList()).SendAsync("statusChanged",new UserStatus { UserId=user.Id,ConnectedStatus=connectedStatus, CustomStatus= customStatus });
         }
         public async Task TypingStatus(int conversationId, bool isTyping)
         {
-            await Clients.Group(conversationId.ToString()).InvokeAsync("isTyping", new  { ConversationId = conversationId, IsTyping = isTyping, UserId=GetCurrentUser().Id });
+            await Clients.Group(conversationId.ToString()).SendAsync("isTyping", new  { ConversationId = conversationId, IsTyping = isTyping, UserId=GetCurrentUser().Id });
         }
         public async Task NotifyStatusChange(CustomStatus customStatus)
         {
             var user = GetCurrentUser();
             user.CustomStatus = customStatus;
             await _chatContext.SaveChangesAsync();
-            await Clients.All.InvokeAsync("statusChanged", new UserStatus { UserId = user.Id, ConnectedStatus = true, CustomStatus = customStatus });
+            await Clients.All.SendAsync("statusChanged", new UserStatus { UserId = user.Id, ConnectedStatus = true, CustomStatus = customStatus });
         }
         private Guid GetUserId()
         {
@@ -143,7 +143,7 @@ namespace ChatApp.Hubs
             var conversations =  _chatContext.Conversations.Where(z =>z.UserConversations.Any(u=>u.UserId== user.Id) ).ToList();
             foreach (var conversation in conversations)
             {
-              await  this.Groups.AddAsync(connectionId, conversation.Id.ToString());
+              await  this.Groups.AddToGroupAsync(connectionId, conversation.Id.ToString());
             }  
             await (StatusChanged(true,user.CustomStatus));
             await base.OnConnectedAsync();

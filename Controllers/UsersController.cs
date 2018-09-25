@@ -70,7 +70,7 @@ namespace ChatApp.Controllers
             }
             _chatContext.Messages.Add(message);
             _chatContext.SaveChanges();
-            await _hubContext.Clients.Group(conversationId.ToString()).InvokeAsync("receiveMessage", message);
+            await _hubContext.Clients.Group(conversationId.ToString()).SendAsync("receiveMessage", message);
             return Ok("File Uploaded");
         }
         [HttpPost, DisableRequestSizeLimit, Route("profilepicture")]
@@ -98,7 +98,7 @@ namespace ChatApp.Controllers
 
                     user.ProfilePicture = fileId;
                     _chatContext.SaveChanges();
-                    await _hubContext.Clients.All.InvokeAsync("profilePictureChanged", user.Id);
+                    await _hubContext.Clients.All.SendAsync("profilePictureChanged", user.Id);
 
                 }
             }

@@ -62,11 +62,10 @@ namespace ChatApp
             var settings = new JsonSerializerSettings();
             settings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             settings.ContractResolver= new CamelCasePropertyNamesContractResolver();
-            services.AddSignalR(options =>
-            {
-                options.JsonSerializerSettings = settings;
-               
-            });
+            services.AddSignalR()
+                   .AddJsonProtocol(options => {
+                       options.PayloadSerializerSettings = settings;
+                          });
             services.AddTransient<IUserService, UserService>();
             services.AddCors();
     }
@@ -107,7 +106,7 @@ namespace ChatApp
             app.UseSignalR(config =>
             {
 
-                config.MapHub<UserHub>("UsersHub");
+                config.MapHub<UserHub>("/UsersHub");
             });
             app.UseMvc(routes =>
             {
